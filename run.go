@@ -5,23 +5,18 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/zap"
 )
 
-type RunnerFunc = func(logger *zap.SugaredLogger, app Application) error
+type RunnerFunc = func(app Application) error
 
-func Run(runner RunnerFunc, opts ...OptionsFunc) {
+func Run(runner RunnerFunc, logger Logger, opts ...OptionsFunc) {
 	if runner == nil {
 		panic("nil runner func")
 	}
 
-	logger, err := zap.NewProduction(zap.AddCaller())
-	if err != nil {
-		panic("Unable to create logger " + err.Error())
+	if logger == nil {
+		logger = &dummyLogger{}
 	}
-
-	sugar := logger.Sugar()
-	defer logger.Sync()
 
 	app := cli.NewApp()
 	for _, opt := range opts {
@@ -29,8 +24,8 @@ func Run(runner RunnerFunc, opts ...OptionsFunc) {
 	}
 
 	app.Action = func(ctx *cli.Context) error {
-		app := NewApp(sugar)
-		if err := runner(sugar, &app); err != nil {
+		app := NewApp(logger)
+		if err := runner(&app); err != nil {
 			return errors.WithMessage(err, "create app")
 		}
 
@@ -38,6 +33,6 @@ func Run(runner RunnerFunc, opts ...OptionsFunc) {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		sugar.Fatal("Unable to run", zap.Error(err))
+		logger.Fatal("Unable to run", err)
 	}
 }

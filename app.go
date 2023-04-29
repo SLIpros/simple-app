@@ -3,10 +3,10 @@ package simple_app
 import (
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 )
 
 type Server interface {
@@ -25,12 +25,12 @@ type Application interface {
 }
 
 type App struct {
-	logger  *zap.SugaredLogger
+	logger  Logger
 	servers []Server
 	closers []Closer
 }
 
-func NewApp(logger *zap.SugaredLogger) App {
+func NewApp(logger Logger) App {
 	return App{
 		logger: logger,
 	}
@@ -59,8 +59,7 @@ func (a *App) Run() error {
 	for _, s := range a.servers {
 		go func(server Server) {
 			if err := server.Serve(); err != nil {
-				serverErrCh <- errors.WithMessagef(err, "serving %q",
-					server.Description())
+				serverErrCh <- errors.WithMessagef(err, "serve %q", server.Description())
 			}
 		}(s)
 	}
@@ -81,17 +80,21 @@ func (a *App) Run() error {
 }
 
 func (a *App) Stop() {
-	closerErrors := make([]error, 0, len(a.closers))
+	var sb strings.Builder
 	for i := len(a.closers) - 1; i >= 0; i-- {
 		c := a.closers[i]
 		if err := c.Close(); err != nil {
-			closerErrors = append(closerErrors,
-				errors.WithMessagef(err, "closing %q", c.Description()))
+			err := errors.WithMessagef(err, "close %q", c.Description())
+
+			if sb.Len() > 0 {
+				sb.WriteString(", ")
+			}
+
+			sb.WriteString(err.Error())
 		}
 	}
 
-	if len(closerErrors) > 0 {
-		a.logger.Error("Closer errors",
-			zap.Errors("errors", closerErrors))
+	if sb.Len() > 0 {
+		a.logger.Error("Closer errors", sb.String())
 	}
 }
