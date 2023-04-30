@@ -10,9 +10,9 @@ func NewSugared(logger *zap.SugaredLogger) *Sugared {
 	return &Sugared{logger: logger}
 }
 
-func (s *Sugared) Warn(msg string, args ...any) {
+func (s *Sugared) Info(msg string, args ...any) {
 	args = append([]any{msg}, args...)
-	s.logger.Warn(args...)
+	s.logger.Info(args...)
 }
 
 func (s *Sugared) Error(msg string, args ...any) {

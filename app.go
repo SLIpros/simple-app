@@ -55,7 +55,6 @@ func (a *App) AddCloser(closers ...Closer) {
 
 func (a *App) Run() error {
 	serverErrCh := make(chan error)
-
 	for _, s := range a.servers {
 		go func(server Server) {
 			if err := server.Serve(); err != nil {
@@ -71,7 +70,7 @@ func (a *App) Run() error {
 
 	select {
 	case <-signalCh:
-		a.logger.Warn("Shutdown application by signal")
+		a.logger.Info("Shutdown application by signal")
 		return nil
 
 	case err := <-serverErrCh:
